@@ -614,56 +614,51 @@ function preopenHolder(src, name, type, x, y, show, restrict)
     end
 end
 
-function preopenInventory(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_, _ARG_5_, _ARG_6_)
-    _ARG_1_ = fixNaming(_ARG_1_)
-    if nil == Config.Inventories[_ARG_2_] then
-      print("[Core Inventory] Inventory type not found! (Create type " .. _ARG_2_ .. " in Config)")
-      return
+function preopenInventory(src, name, type, x, y, show, restrict)
+    name = fixNaming(name)
+    if not Config.Inventories[type] then
+        print("[Core Inventory] Inventory type not found! (Create type " .. type .. " in Config)")
+        return
+    end 
+    if x == nil or y == nil then
+        x = Config.Inventories[type].x or 1
+        y = Config.Inventories[type].y or 1
     end
-    if nil == _ARG_3_ or nil == _ARG_4_ then
-      _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
-      if not Config.Inventories[_ARG_2_].x then
-        _ARG_3_ = 1
-      end
-      _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
-      if not Config.Inventories[_ARG_2_].y then
-        _ARG_4_ = 1
-      end
-    end
-    if not ActiveInventories[_ARG_1_] then
-      ({}).name = _ARG_1_
-      exports.oxmysql:query("SELECT data FROM coreinventories WHERE name = @name", {
-        ["@name"] = _ARG_1_
-      }, function(_ARG_0_)
-        if nil == _ARG_0_[1] then
-          ({}).content = _UPVALUE0_ or {}
-          ;({}).x = _UPVALUE1_
-          ;({}).y = _UPVALUE2_
-          ;({}).hidden = false
-        else
+    if not ActiveInventories[name] then
+        exports.oxmysql:query("SELECT data FROM coreinventories WHERE name = @name", {["@name"] = name}, function(result)
+            local data = {}
+            if result[1] then
+                data = json.decode(result[1].data) or {}
+            end
+            data.content = data.content or {}
+            data.spectators = {}
+            data.hidden = data.hidden or false
+            data.type = type
+            data.restrictedTo = restrict or nil
+            data.slots = Config.Inventories[type].slots
+            data.rows = Config.Inventories[type].rows
+            data.name = name
+            data.label = Config.Inventories[type].label
+            data.x = x
+            data.y = y
+            ActiveInventories[name] = data
+            for _, item in pairs(data.content) do
+                TriggerClientEvent("core_inventory:client:inventoryData", src, name, item)
+            end
+            if show then
+                openInventory(src, name)
+            end
+        end)
+    else
+        for _, item in pairs(ActiveInventories[name].content) do
+            TriggerClientEvent("core_inventory:client:inventoryData", src, name, item)
         end
-        ;({}).content = json.decode(_ARG_0_[1].data).content or {}
-        ;({}).spectators = {}
-        ;({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
-        ;({}).restrictedTo = _UPVALUE4_.restrictedTo or nil
-        ;({}).type = _UPVALUE5_
-        ;({}).slots = _UPVALUE4_.slots
-        ;({}).rows = _UPVALUE4_.rows
-        ;({}).name = _UPVALUE3_
-        ;({}).label = _UPVALUE4_.label
-        ;({}).x = json.decode(_ARG_0_[1].data).x
-        ActiveInventories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
-        if _UPVALUE6_ then
-          openInventory(_UPVALUE7_, _UPVALUE3_)
+        if show then
+            openInventory(src, name)
         end
-        if true and "content" == _UPVALUE5_ then
-          firstInventory(_UPVALUE3_, _UPVALUE7_)
-        end
-      end)
-    elseif _ARG_5_ then
-      openInventory(_ARG_0_, _ARG_1_)
     end
 end
+
 
 RegisterServerEvent("core_inventory:server:openLoot")
 AddEventHandler(
