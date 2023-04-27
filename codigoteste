@@ -133,34 +133,32 @@ function setDurability(_ARG_0_, _ARG_1_, _ARG_2_)
         ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability = _ARG_2_
     end
 end
+
 function firstInventory(_ARG_0_, _ARG_1_)
     if ESX.GetPlayerFromId(_ARG_1_) then
         if Config.SyncOldInventory then
-            ({}).cid = ESX.GetPlayerFromId(_ARG_1_).getIdentifier()
-            exports.oxmysql:query(
-                "SELECT inventory FROM users WHERE identifier = :cid",
-                {},
-                function(_ARG_0_)
-                    if nil ~= _ARG_0_[1] then
-                        for _FORV_16_, _FORV_17_ in pairs((json.decode(_ARG_0_[1].inventory))) do
-                            addItem(_UPVALUE0_, _FORV_16_, _FORV_17_.count, _FORV_17_.metadata or {})
-                        end
-                        ({}).cid = _UPVALUE1_
-                        exports.oxmysql:update(
-                            "UPDATE `users` SET `inventory` = '[]' WHERE identifier = :cid",
-                            {},
-                            function()
-                            end
-                        )
-                    end
+          ({}).cid = ESX.GetPlayerFromId(_ARG_1_).getIdentifier()
+            exports.oxmysql:query("SELECT inventory FROM users WHERE identifier = @cid", {
+                ["@cid"] = _ARG_1_
+            }, function(_ARG_0_)
+            if nil ~= _ARG_0_[1] then
+                for _FORV_16_, _FORV_17_ in pairs((json.decode(_ARG_0_[1].inventory))) do
+                    addItem(_UPVALUE0_, _FORV_16_, _FORV_17_.count, _FORV_17_.metadata or {})
                 end
-            )
+                ;({}).cid = _UPVALUE1_
+                    exports.oxmysql:update("UPDATE `users` SET `inventory` = '[]' WHERE identifier = @cid", {
+                        ["@cid"] = _UPVALUE1_
+                    }, function()
+                end)
+            end
+          end)
         end
         for _FORV_18_, _FORV_19_ in pairs(Config.StartItems) do
             addItem(_ARG_0_, _FORV_18_, _FORV_19_.amount, _FORV_19_.metadata)
         end
     end
 end
+
 function openLoot(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_)
     preopenInventory(_ARG_0_, "loot-" .. math.random(1, 9999), _ARG_1_, nil, nil, true)
     Wait(500)
@@ -173,6 +171,7 @@ function openLoot(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_)
         end
     end
 end
+
 function getAvailableSlot(_ARG_0_, _ARG_1_)
     for _FORV_22_, _FORV_23_ in pairs(ActiveIncentories[_ARG_0_].content) do
         for _FORV_27_ = _FORV_23_.slot, _FORV_23_.slot + (_FORV_23_.y - 1) * ActiveIncentories[_ARG_0_].rows, ActiveIncentories[
@@ -202,6 +201,7 @@ function getAvailableSlot(_ARG_0_, _ARG_1_)
     end
     return nil
 end
+
 function getItem(_ARG_0_, _ARG_1_)
     if ActiveIncentories[_ARG_0_] and Items[_ARG_1_] then
         Items[_ARG_1_].count = 0
@@ -216,6 +216,7 @@ function getItem(_ARG_0_, _ARG_1_)
         return nil
     end
 end
+
 function getItems(_ARG_0_, _ARG_1_)
     if ActiveIncentories[_ARG_0_] and Items[_ARG_1_] then
         for _FORV_21_, _FORV_22_ in pairs(ActiveIncentories[_ARG_0_].content) do
@@ -237,6 +238,7 @@ function getItems(_ARG_0_, _ARG_1_)
         return nil
     end
 end
+
 function updateMetadata(_ARG_0_, _ARG_1_, _ARG_2_)
     if ActiveIncentories[_ARG_0_].content[_ARG_1_] then
         ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata = _ARG_2_
@@ -269,185 +271,147 @@ function getInventory(name)
     end
 end
 
-function canCarry(name, item, amount)
-    for index = 1, amount do
-        if not Items[item] and DynamicItems[item] then
-        end
-        if ActiveIncentories[name] and DynamicItems[item] then
-            DynamicItems[item].x = DynamicItems[item].x or Config.DefaultItemSizeX
-            DynamicItems[item].y = DynamicItems[item].y or Config.DefaultItemSizeY
-
-
-
-
-            ({}).x = DynamicItems[item].x or 1
-            ({}).y = DynamicItems[item].y or 1
-            ({}).id, ({}).slot = item .. "-" .. math.random(0, 99999), 0
-            ({}).name = item
-            ({}).flipped = 0
-            if not (DynamicItems[item].category or "misc") then
-            end
-            ({}).category = "misc"
-
-            ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)], ({}).metadata = {},  metadata or {}
-
-
-            if nil == getAvailableSlot(name, DynamicItems[item]) then
-                sendTextMessage(Config.Text.no_space)
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)] = nil
-                for _FORV_31_, _FORV_32_ in pairs({}) do
-                    removeItemExact(name, _FORV_31_)
-                end
-                return false
-            else
-                
-                ({})[item .. "-" .. math.random(0, 99999)] = true
-                
-                
-                
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].slot =
-                getAvailableSlot(name, DynamicItems[item])
-            end
-            if DynamicItems[item].componentHash then
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].componentHash =
-                DynamicItems[item].componentHash
-            end
-            if DynamicItems[item].componentTint then
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].componentTint =
-                DynamicItems[item].componentTint
-            end
-            if DynamicItems[item].backpackModel then
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].backpackModel =
-                    DynamicItems[item].backpackModel
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].backpackTexture =
-                    DynamicItems[item].backpackTexture or 1
-            end
-            if Config.ItemCategories[DynamicItems[item].category or "misc"].durability then
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.durability =
-                    Config.DefaultDurability
-            end
-            if Config.ItemCategories[DynamicItems[item].category or "misc"].serial then
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.serial =
-                    string.upper(
-                    string.char(math.random(97, 122)) ..
-                        string.char(math.random(97, 122)) ..
-                            math.random(0, 9) ..
-                                math.random(0, 9) ..
-                                    math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9)
-                )
-            end
-            if "weapons" == ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].category then
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.attachments = {}
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.ammo = 0
-                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.aquired = name
-            end
-            saveInventory(name)
-            for _FORV_31_, _FORV_32_ in pairs(ActiveIncentories[name].spectators) do
-                if _FORV_32_ then
-                    TriggerClientEvent("core_inventory:client:sync", _FORV_31_, name, ActiveIncentories[name])
-                end
-            end
-        end
-    end
-
-    for index, _FORV_28_ in pairs({}) do
-        removeItemExact(name, index)
-    end
-
-    return true
-end
-
-function addItem(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
-    if not Items[_ARG_1_] then
-        return
-    end
-    if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
-        _ARG_2_ = math.floor(_ARG_2_ / Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack + 0.5)
-        if 0 == _ARG_2_ then
-            _ARG_2_ = 1
-        end
-    end
-    for _FORV_29_ = 1, _ARG_2_ do
+function canCarry(_ARG_0_, _ARG_1_, _ARG_2_)
+    for _FORV_27_ = 1, _ARG_2_ do
         if not Items[_ARG_1_] and DynamicItems[_ARG_1_] then
         end
         if ActiveIncentories[_ARG_0_] and DynamicItems[_ARG_1_] then
-            DynamicItems[_ARG_1_].x = DynamicItems[_ARG_1_].x or Config.DefaultItemSizeX
-            DynamicItems[_ARG_1_].y = DynamicItems[_ARG_1_].y or Config.DefaultItemSizeY
-            ({}).x = DynamicItems[_ARG_1_].x or 1
-            ({}).y = DynamicItems[_ARG_1_].y or 1
-            ({}).id, ({}).slot = _ARG_1_ .. "-" .. math.random(0, 99999), 0
-            ({}).name = _ARG_1_
-            ({}).flipped = 0
-            if not (Items[_ARG_1_].category or "misc") then
-            end
-            ({}).category = "misc"
-            if not _ARG_3_ then
-            end
-            ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)], ({}).metadata = {}, {}
-            if nil == getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_]) then
-                sendTextMessage(Config.Text.no_space)
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)] = nil
-                for _FORV_33_, _FORV_34_ in pairs({}) do
-                    removeItemExact(_ARG_0_, _FORV_33_)
+                DynamicItems[_ARG_1_].x = DynamicItems[_ARG_1_].x or Config.DefaultItemSizeX
+                DynamicItems[_ARG_1_].y = DynamicItems[_ARG_1_].y or Config.DefaultItemSizeY
+                ;({}).x = DynamicItems[_ARG_1_].x or 1
+                ;({}).y = DynamicItems[_ARG_1_].y or 1
+                ;({}).id, ({}).slot = _ARG_1_ .. "-" .. math.random(0, 99999), 0
+                ;({}).name = _ARG_1_
+                ;({}).flipped = 0
+                if not (DynamicItems[_ARG_1_].category or "misc") then
                 end
-                return false
-            else
-                ({})[_ARG_1_ .. "-" .. math.random(0, 99999)] = true
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].slot =
-                    getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_])
-            end
-            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
-                if _ARG_2_ >= Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
-                    ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].amount =
-                        Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack
+                ;({}).category = "misc"
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)], ({}).metadata = {}, metadata or {}
+                if nil == getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_]) then
+                  sendTextMessage(Config.Text.no_space)
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)] = nil
+                  for _FORV_31_, _FORV_32_ in pairs({}) do
+                    removeItemExact(_ARG_0_, _FORV_31_)
+                  end
+                  return false
                 else
-                    ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].amount =
-                        _ARG_2_ - Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack
+                  ({})[_ARG_1_ .. "-" .. math.random(0, 99999)] = true
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].slot = getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_])
                 end
-            end
-            if DynamicItems[_ARG_1_].componentHash then
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentHash =
-                    DynamicItems[_ARG_1_].componentHash
-            end
-            if DynamicItems[_ARG_1_].componentTint then
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentTint =
-                    DynamicItems[_ARG_1_].componentTint
-            end
-            if DynamicItems[_ARG_1_].backpackModel then
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackModel =
-                    DynamicItems[_ARG_1_].backpackModel
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackTexture =
-                    DynamicItems[_ARG_1_].backpackTexture or 1
-            end
-            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].durability then
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.durability =
-                    Config.DefaultDurability
-            end
-            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].serial then
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.serial =
-                    string.upper(
-                    string.char(math.random(97, 122)) ..
-                        string.char(math.random(97, 122)) ..
-                            math.random(0, 9) ..
-                                math.random(0, 9) ..
-                                    math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9)
-                )
-            end
-            if "weapons" == ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].category then
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.attachments = {}
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.ammo = 0
-                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.aquired = _ARG_0_
-            end
-            saveInventory(_ARG_0_)
-            for _FORV_33_, _FORV_34_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
-                if _FORV_34_ then
-                    TriggerClientEvent("core_inventory:client:sync", _FORV_33_, _ARG_0_, ActiveIncentories[_ARG_0_])
+                if DynamicItems[_ARG_1_].componentHash then
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentHash = DynamicItems[_ARG_1_].componentHash
+                end
+                if DynamicItems[_ARG_1_].componentTint then
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentTint = DynamicItems[_ARG_1_].componentTint
+                end
+                if DynamicItems[_ARG_1_].backpackModel then
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackModel = DynamicItems[_ARG_1_].backpackModel
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackTexture = DynamicItems[_ARG_1_].backpackTexture or 1
+                end
+                if Config.ItemCategories[DynamicItems[_ARG_1_].category or "misc"].durability then
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.durability = Config.DefaultDurability
+                end
+                if Config.ItemCategories[DynamicItems[_ARG_1_].category or "misc"].serial then
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.serial = string.upper(string.char(math.random(97, 122)) .. string.char(math.random(97, 122)) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9))
+                end
+                if "weapons" == ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].category then
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.attachments = {}
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.ammo = 0
+                  ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.aquired = _ARG_0_
+                end
+                saveInventory(_ARG_0_)
+                for _FORV_31_, _FORV_32_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+                  if _FORV_32_ then
+                    TriggerClientEvent("core_inventory:client:sync", _FORV_31_, _ARG_0_, ActiveIncentories[_ARG_0_])
+                  end
                 end
             end
         end
+    for _FORV_27_, _FORV_28_ in pairs({}) do
+        removeItemExact(_ARG_0_, _FORV_27_)
     end
     return true
 end
+
+
+
+function addItem(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+    if not Items[_ARG_1_] then
+      return
+    end
+    if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+      _ARG_2_ = math.floor(_ARG_2_ / Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack + 0.5)
+      if 0 == _ARG_2_ then
+        _ARG_2_ = 1
+      end
+    end
+    for _FORV_29_ = 1, _ARG_2_ do
+      if not Items[_ARG_1_] and DynamicItems[_ARG_1_] then
+      end
+      if ActiveIncentories[_ARG_0_] and DynamicItems[_ARG_1_] then
+        DynamicItems[_ARG_1_].x = DynamicItems[_ARG_1_].x or Config.DefaultItemSizeX
+        DynamicItems[_ARG_1_].y = DynamicItems[_ARG_1_].y or Config.DefaultItemSizeY
+        ;({}).x = DynamicItems[_ARG_1_].x or 1
+        ;({}).y = DynamicItems[_ARG_1_].y or 1
+        ;({}).id, ({}).slot = _ARG_1_ .. "-" .. math.random(0, 99999), 0
+        ;({}).name = _ARG_1_
+        ;({}).flipped = 0
+        if not (Items[_ARG_1_].category or "misc") then
+        end
+        ;({}).category = "misc"
+        if not _ARG_3_ then
+        end
+        ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)], ({}).metadata = {}, {}
+        if nil == getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_]) then
+          sendTextMessage(Config.Text.no_space)
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)] = nil
+          for _FORV_33_, _FORV_34_ in pairs({}) do
+            removeItemExact(_ARG_0_, _FORV_33_)
+          end
+          return false
+        else
+          ({})[_ARG_1_ .. "-" .. math.random(0, 99999)] = true
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].slot = getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_])
+        end
+        if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+          if _ARG_2_ >= Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+            ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].amount = Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack
+          else
+            ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].amount = _ARG_2_ - Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack
+          end
+        end
+        if DynamicItems[_ARG_1_].componentHash then
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentHash = DynamicItems[_ARG_1_].componentHash
+        end
+        if DynamicItems[_ARG_1_].componentTint then
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentTint = DynamicItems[_ARG_1_].componentTint
+        end
+        if DynamicItems[_ARG_1_].backpackModel then
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackModel = DynamicItems[_ARG_1_].backpackModel
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackTexture = DynamicItems[_ARG_1_].backpackTexture or 1
+        end
+        if Config.ItemCategories[Items[_ARG_1_].category or "misc"].durability then
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.durability = Config.DefaultDurability
+        end
+        if Config.ItemCategories[Items[_ARG_1_].category or "misc"].serial then
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.serial = string.upper(string.char(math.random(97, 122)) .. string.char(math.random(97, 122)) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9))
+        end
+        if "weapons" == ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].category then
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.attachments = {}
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.ammo = 0
+          ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.aquired = _ARG_0_
+        end
+        saveInventory(_ARG_0_)
+        for _FORV_33_, _FORV_34_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+          if _FORV_34_ then
+            TriggerClientEvent("core_inventory:client:sync", _FORV_33_, _ARG_0_, ActiveIncentories[_ARG_0_])
+          end
+        end
+      end
+    end
+    return true
+end
+
 function clearInventory(_ARG_0_)
     if ActiveIncentories[_ARG_0_] then
         ActiveIncentories[_ARG_0_].content = {}
@@ -459,104 +423,92 @@ function clearInventory(_ARG_0_)
         end
     end
 end
-function removeItemExact(_ARG_0_, _ARG_1_, _ARG_2_)
-    if _ARG_2_ then
-        if _ARG_2_ < ActiveIncentories[_ARG_0_].content[_ARG_1_].amount then
-            ActiveIncentories[_ARG_0_].content[_ARG_1_].amount =
-                ActiveIncentories[_ARG_0_].content[_ARG_1_].amount - _ARG_2_
-        else
-            ActiveIncentories[_ARG_0_].content[_ARG_1_] = nil
-        end
+
+function removeItemExact(name, item)
+    local content = ActiveIncentories[name].content
+    local metadata = content[item].metadata or {}
+    if Config.ItemCategories[content[item].category or "misc"].durability and metadata.durability and
+        metadata.durability > 1 then
+        metadata.durability = metadata.durability - 1
     else
-        ActiveIncentories[_ARG_0_].content[_ARG_1_] = nil
+        if Config.ItemCategories[content[item].category or "misc"].serial then
+            local serial = metadata.serial or ""
+            if serial ~= "" then
+                ActiveIncentories[name].serials[serial] = nil
+            end
+        end
+        content[item] = nil
     end
-    saveInventory(_ARG_0_)
-    for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
-        if _FORV_18_ then
-            TriggerClientEvent("core_inventory:client:sync", _FORV_17_, _ARG_0_, ActiveIncentories[_ARG_0_])
+    saveInventory(name)
+    for _, spectator in pairs(ActiveIncentories[name].spectators) do
+        if spectator then
+            TriggerClientEvent("core_inventory:client:sync", _, name, ActiveIncentories[name])
         end
     end
 end
+
 function removeItem(_ARG_0_, _ARG_1_, _ARG_2_)
-    if
-        1 == _ARG_2_ and UsedItems[_ARG_0_] and ActiveIncentories[_ARG_0_].content[UsedItems[_ARG_0_]] and
-            ActiveIncentories[_ARG_0_].content[UsedItems[_ARG_0_]].name == _ARG_1_
-     then
-        removeItemExact(_ARG_0_, UsedItems[_ARG_0_], 1)
-        UsedItems[_ARG_0_] = nil
-        return true
+    if 1 == _ARG_2_ and UsedItems[_ARG_0_] and ActiveIncentories[_ARG_0_].content[UsedItems[_ARG_0_]] and ActiveIncentories[_ARG_0_].content[UsedItems[_ARG_0_]].name == _ARG_1_ then
+      removeItemExact(_ARG_0_, UsedItems[_ARG_0_], 1)
+      UsedItems[_ARG_0_] = nil
+      return true
     end
     for _FORV_31_ = 1, _ARG_2_ do
-        if 0 == _ARG_2_ then
+      if 0 == _ARG_2_ then
+        break
+      end
+      if ActiveIncentories[_ARG_0_] then
+        for _FORV_35_, _FORV_36_ in pairs(ActiveIncentories[_ARG_0_].content) do
+          if _FORV_36_.name == _ARG_1_ and _FORV_36_.metadata == {} then
+            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+              if _ARG_2_ < ActiveIncentories[_ARG_0_].content[_FORV_35_].amount then
+                ActiveIncentories[_ARG_0_].content[_FORV_35_].amount = ActiveIncentories[_ARG_0_].content[_FORV_35_].amount - _ARG_2_
+              else
+                ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+              end
+            else
+              ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+            end
+            saveInventory(_ARG_0_)
+            for _FORV_40_, _FORV_41_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+              if _FORV_41_ then
+                TriggerClientEvent("core_inventory:client:sync", _FORV_40_, _ARG_0_, ActiveIncentories[_ARG_0_])
+              end
+            end
             break
+          end
         end
-        if ActiveIncentories[_ARG_0_] then
-            for _FORV_35_, _FORV_36_ in pairs(ActiveIncentories[_ARG_0_].content) do
-                if _FORV_36_.name == _ARG_1_ and _FORV_36_.metadata == {} then
-                    if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
-                        if _ARG_2_ < ActiveIncentories[_ARG_0_].content[_FORV_35_].amount then
-                            ActiveIncentories[_ARG_0_].content[_FORV_35_].amount =
-                                ActiveIncentories[_ARG_0_].content[_FORV_35_].amount - _ARG_2_
-                        else
-                            ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
-                        end
-                    else
-                        ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
-                    end
-                    saveInventory(_ARG_0_)
-                    for _FORV_40_, _FORV_41_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
-                        if _FORV_41_ then
-                            TriggerClientEvent(
-                                "core_inventory:client:sync",
-                                _FORV_40_,
-                                _ARG_0_,
-                                ActiveIncentories[_ARG_0_]
-                            )
-                        end
-                    end
-                    break
+        if not true then
+          for _FORV_35_, _FORV_36_ in pairs(ActiveIncentories[_ARG_0_].content) do
+            if _FORV_36_.name == _ARG_1_ then
+              if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+                if 0 - ActiveIncentories[_ARG_0_].content[_FORV_35_].amount < ActiveIncentories[_ARG_0_].content[_FORV_35_].amount then
+                  ActiveIncentories[_ARG_0_].content[_FORV_35_].amount = ActiveIncentories[_ARG_0_].content[_FORV_35_].amount - (0 - ActiveIncentories[_ARG_0_].content[_FORV_35_].amount)
+                else
+                  ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
                 end
-            end
-            if not true then
-                for _FORV_35_, _FORV_36_ in pairs(ActiveIncentories[_ARG_0_].content) do
-                    if _FORV_36_.name == _ARG_1_ then
-                        if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
-                            if
-                                0 - ActiveIncentories[_ARG_0_].content[_FORV_35_].amount <
-                                    ActiveIncentories[_ARG_0_].content[_FORV_35_].amount
-                             then
-                                ActiveIncentories[_ARG_0_].content[_FORV_35_].amount =
-                                    ActiveIncentories[_ARG_0_].content[_FORV_35_].amount -
-                                    (0 - ActiveIncentories[_ARG_0_].content[_FORV_35_].amount)
-                            else
-                                ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
-                            end
-                        else
-                            ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
-                        end
-                        saveInventory(_ARG_0_)
-                        for _FORV_40_, _FORV_41_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
-                            if _FORV_41_ then
-                                TriggerClientEvent(
-                                    "core_inventory:client:sync",
-                                    _FORV_40_,
-                                    _ARG_0_,
-                                    ActiveIncentories[_ARG_0_]
-                                )
-                            end
-                        end
-                        break
-                    end
+              else
+                ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+              end
+              saveInventory(_ARG_0_)
+              for _FORV_40_, _FORV_41_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+                if _FORV_41_ then
+                  TriggerClientEvent("core_inventory:client:sync", _FORV_40_, _ARG_0_, ActiveIncentories[_ARG_0_])
                 end
+              end
+              break
             end
-            if not true then
-                sendTextMessage(Config.Text.no_such_item)
-                return false
-            end
+          end
         end
+        if not true then
+          sendTextMessage(Config.Text.no_such_item)
+          return false
+        end
+      end
     end
     return true
 end
+
 function openHolder(_ARG_0_, _ARG_1_)
     if ActiveIncentories[_ARG_1_] then
         ActiveIncentories[_ARG_1_].spectators[_ARG_0_] = true
@@ -595,148 +547,137 @@ function openInventory(_ARG_0_, _ARG_1_)
         )
     end
 end
+
 function saveInventory(_ARG_0_)
     if not ActiveIncentories[_ARG_0_] then
-        return
+      return
     end
-    ({}).inventory = _ARG_0_
-    exports.oxmysql:update(
-        "DELETE FROM coreinventories WHERE name = :inventory",
-        {},
-        function()
-            if nil == next(ActiveIncentories[_UPVALUE0_].content) or nil ~= ActiveIncentories[_UPVALUE0_].type then
-            end
-            if Config.Inventories[ActiveIncentories[_UPVALUE0_].type].alwaysSave then
-                ({}).inventory = _UPVALUE0_
-                ({}).data = json.encode(ActiveIncentories[_UPVALUE0_])
-                exports.oxmysql:update(
-                    "REPLACE INTO coreinventories (name, data) values(:inventory, :data)",
-                    {},
-                    function()
-                    end
-                )
-            end
-        end
-    )
+    ;({}).inventory = _ARG_0_
+    exports.oxmysql:update("DELETE FROM coreinventories WHERE name = :inventory", {}, function()
+      if nil == next(ActiveIncentories[_UPVALUE0_].content) or nil ~= ActiveIncentories[_UPVALUE0_].type then
+      end
+      if Config.Inventories[ActiveIncentories[_UPVALUE0_].type].alwaysSave then
+        ({}).inventory = _UPVALUE0_
+        ;({}).data = json.encode(ActiveIncentories[_UPVALUE0_])
+        exports.oxmysql:update("REPLACE INTO coreinventories (name, data) values(:inventory, :data)", {}, function()
+        end)
+      end
+    end)
 end
+
 function fixNaming(_ARG_0_)
     return (_ARG_0_:gsub(" ", ""))
 end
+
 function preopenHolder(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_, _ARG_5_, _ARG_6_)
     _ARG_1_ = fixNaming(_ARG_1_)
     if nil == Config.Inventories[_ARG_2_] then
-        print("[Core Inventory] Holder type not found! (Create type " .. _ARG_2_ .. " in Config)")
-        return
+      print("[Core Inventory] Holder type not found! (Create type " .. _ARG_2_ .. " in Config)")
+      return
     end
     if nil == _ARG_3_ or nil == _ARG_4_ then
-        _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
-        if not Config.Inventories[_ARG_2_].x then
-            _ARG_3_ = 1
-        end
-        _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
-        if not Config.Inventories[_ARG_2_].y then
-            _ARG_4_ = 1
-        end
+      _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
+      if not Config.Inventories[_ARG_2_].x then
+        _ARG_3_ = 1
+      end
+      _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
+      if not Config.Inventories[_ARG_2_].y then
+        _ARG_4_ = 1
+      end
     end
     if not ActiveIncentories[_ARG_1_] then
-        ({}).name = _ARG_1_
-        exports.oxmysql:query(
-            "SELECT data FROM coreinventories WHERE name = :name",
-            {},
-            function(_ARG_0_)
-                if nil == _ARG_0_[1] then
-                    ({}).content = _UPVALUE0_ or {}
-                    ({}).x = _UPVALUE1_
-                    ({}).y = _UPVALUE2_
-                    ({}).hidden = false
-                else
-                end
-                ({}).content = json.decode(_ARG_0_[1].data).content or {}
-                ({}).spectators = {}
-                ({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
-                ({}).type = _UPVALUE4_
-                ({}).restrictedTo = _UPVALUE5_.restrictedTo or nil
-                ({}).slots = _UPVALUE5_.slots
-                ({}).rows = _UPVALUE5_.rows
-                ({}).name = _UPVALUE3_
-                ({}).label = _UPVALUE5_.label
-                ({}).x = json.decode(_ARG_0_[1].data).x
-                ActiveIncentories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
-                for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_UPVALUE3_].content) do
-                    TriggerClientEvent("core_inventory:client:holderData", _UPVALUE6_, _UPVALUE3_, _FORV_18_)
-                end
-                if not true then
-                    TriggerClientEvent("core_inventory:client:holderData", _UPVALUE6_, _UPVALUE3_, nil)
-                end
-                if _UPVALUE7_ then
-                    openHolder(_UPVALUE6_, _UPVALUE3_)
-                end
-            end
-        )
-    else
-        if _ARG_5_ then
-            openHolder(_ARG_0_, _ARG_1_)
+      ({}).name = _ARG_1_
+      exports.oxmysql:query("SELECT data FROM coreinventories WHERE name = :name", {}, function(_ARG_0_)
+        if nil == _ARG_0_[1] then
+          ({}).content = _UPVALUE0_ or {}
+          ;({}).x = _UPVALUE1_
+          ;({}).y = _UPVALUE2_
+          ;({}).hidden = false
+        else
         end
-        for _FORV_23_, _FORV_24_ in pairs(ActiveIncentories[_ARG_1_].content) do
-            TriggerClientEvent("core_inventory:client:holderData", _ARG_0_, _ARG_1_, _FORV_24_)
+        ;({}).content = json.decode(_ARG_0_[1].data).content or {}
+        ;({}).spectators = {}
+        ;({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
+        ;({}).type = _UPVALUE4_
+        ;({}).restrictedTo = _UPVALUE5_.restrictedTo or nil
+        ;({}).slots = _UPVALUE5_.slots
+        ;({}).rows = _UPVALUE5_.rows
+        ;({}).name = _UPVALUE3_
+        ;({}).label = _UPVALUE5_.label
+        ;({}).x = json.decode(_ARG_0_[1].data).x
+        ActiveIncentories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
+        for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_UPVALUE3_].content) do
+          TriggerClientEvent("core_inventory:client:holderData", _UPVALUE6_, _UPVALUE3_, _FORV_18_)
         end
         if not true then
-            TriggerClientEvent("core_inventory:client:holderData", _ARG_0_, _ARG_1_, nil)
+          TriggerClientEvent("core_inventory:client:holderData", _UPVALUE6_, _UPVALUE3_, nil)
         end
+        if _UPVALUE7_ then
+          openHolder(_UPVALUE6_, _UPVALUE3_)
+        end
+      end)
+    else
+      if _ARG_5_ then
+        openHolder(_ARG_0_, _ARG_1_)
+      end
+      for _FORV_23_, _FORV_24_ in pairs(ActiveIncentories[_ARG_1_].content) do
+        TriggerClientEvent("core_inventory:client:holderData", _ARG_0_, _ARG_1_, _FORV_24_)
+      end
+      if not true then
+        TriggerClientEvent("core_inventory:client:holderData", _ARG_0_, _ARG_1_, nil)
+      end
     end
 end
+  
 function preopenInventory(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_, _ARG_5_, _ARG_6_)
     _ARG_1_ = fixNaming(_ARG_1_)
     if nil == Config.Inventories[_ARG_2_] then
-        print("[Core Inventory] Inventory type not found! (Create type " .. _ARG_2_ .. " in Config)")
-        return
+      print("[Core Inventory] Inventory type not found! (Create type " .. _ARG_2_ .. " in Config)")
+      return
     end
     if nil == _ARG_3_ or nil == _ARG_4_ then
-        _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
-        if not Config.Inventories[_ARG_2_].x then
-            _ARG_3_ = 1
-        end
-        _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
-        if not Config.Inventories[_ARG_2_].y then
-            _ARG_4_ = 1
-        end
+      _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
+      if not Config.Inventories[_ARG_2_].x then
+        _ARG_3_ = 1
+      end
+      _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
+      if not Config.Inventories[_ARG_2_].y then
+        _ARG_4_ = 1
+      end
     end
     if not ActiveIncentories[_ARG_1_] then
-        ({}).name = _ARG_1_
-        exports.oxmysql:query(
-            "SELECT data FROM coreinventories WHERE name = :name",
-            {},
-            function(_ARG_0_)
-                if nil == _ARG_0_[1] then
-                    ({}).content = _UPVALUE0_ or {}
-                    ({}).x = _UPVALUE1_
-                    ({}).y = _UPVALUE2_
-                    ({}).hidden = false
-                else
-                end
-                ({}).content = json.decode(_ARG_0_[1].data).content or {}
-                ({}).spectators = {}
-                ({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
-                ({}).restrictedTo = _UPVALUE4_.restrictedTo or nil
-                ({}).type = _UPVALUE5_
-                ({}).slots = _UPVALUE4_.slots
-                ({}).rows = _UPVALUE4_.rows
-                ({}).name = _UPVALUE3_
-                ({}).label = _UPVALUE4_.label
-                ({}).x = json.decode(_ARG_0_[1].data).x
-                ActiveIncentories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
-                if _UPVALUE6_ then
-                    openInventory(_UPVALUE7_, _UPVALUE3_)
-                end
-                if true and "content" == _UPVALUE5_ then
-                    firstInventory(_UPVALUE3_, _UPVALUE7_)
-                end
-            end
-        )
+      ({}).name = _ARG_1_
+      exports.oxmysql:query("SELECT data FROM coreinventories WHERE name = :name", {}, function(_ARG_0_)
+        if nil == _ARG_0_[1] then
+          ({}).content = _UPVALUE0_ or {}
+          ;({}).x = _UPVALUE1_
+          ;({}).y = _UPVALUE2_
+          ;({}).hidden = false
+        else
+        end
+        ;({}).content = json.decode(_ARG_0_[1].data).content or {}
+        ;({}).spectators = {}
+        ;({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
+        ;({}).restrictedTo = _UPVALUE4_.restrictedTo or nil
+        ;({}).type = _UPVALUE5_
+        ;({}).slots = _UPVALUE4_.slots
+        ;({}).rows = _UPVALUE4_.rows
+        ;({}).name = _UPVALUE3_
+        ;({}).label = _UPVALUE4_.label
+        ;({}).x = json.decode(_ARG_0_[1].data).x
+        ActiveIncentories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
+        if _UPVALUE6_ then
+          openInventory(_UPVALUE7_, _UPVALUE3_)
+        end
+        if true and "content" == _UPVALUE5_ then
+          firstInventory(_UPVALUE3_, _UPVALUE7_)
+        end
+      end)
     elseif _ARG_5_ then
-        openInventory(_ARG_0_, _ARG_1_)
+      openInventory(_ARG_0_, _ARG_1_)
     end
 end
+
 RegisterServerEvent("core_inventory:server:openLoot")
 AddEventHandler(
     "core_inventory:server:openLoot",
@@ -1029,37 +970,32 @@ AddEventHandler(
         end
     end
 )
+
 RegisterServerEvent("core_inventory:server:loadInventory")
-AddEventHandler(
-    "core_inventory:server:loadInventory",
-    function()
-        if ESX.GetPlayerFromId(source) then
-            ({}).cid = ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")
-            exports.oxmysql:scalar(
-                "SELECT inventorysettings FROM users WHERE identifier = :cid",
-                {},
-                function(_ARG_0_)
-                    if _ARG_0_ or "" ~= _ARG_0_ then
-                        _ARG_0_ = json.decode(_ARG_0_)
-                        TriggerClientEvent("core_inventory:client:setSettings", _UPVALUE0_, _ARG_0_, Items)
-                    end
-                    preopenInventory(_UPVALUE0_, "content-" .. _UPVALUE1_, "content", nil, nil, false)
-                    preopenHolder(_UPVALUE0_, "primary-" .. _UPVALUE1_, "primary", nil, nil, false)
-                    preopenHolder(_UPVALUE0_, "secondry-" .. _UPVALUE1_, "secondry", nil, nil, false)
-                    if not Config.DisableClothing then
-                        for _FORV_17_, _FORV_18_ in pairs(Config.InventoryClothing) do
-                            if not Config.Inventories[_FORV_17_] then
-                                print("[Core Inventory] No inventory created for clothing " .. _FORV_17_)
-                                return
-                            end
-                            preopenHolder(_UPVALUE0_, _FORV_17_ .. "-" .. _UPVALUE1_, _FORV_17_, nil, nil, false)
-                        end
-                    end
-                end
-            )
+AddEventHandler("core_inventory:server:loadInventory", function()
+  if ESX.GetPlayerFromId(source) then
+    ({}).cid = ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")
+    exports.oxmysql:scalar("SELECT inventorysettings FROM users WHERE identifier = @cid", {["@cid"] = ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")}, function(_ARG_0_)
+      if _ARG_0_ or "" ~= _ARG_0_ then
+        _ARG_0_ = json.decode(_ARG_0_)
+        TriggerClientEvent("core_inventory:client:setSettings", _UPVALUE0_, _ARG_0_, Items)
+      end
+      preopenInventory(_UPVALUE0_, "content-" .. _UPVALUE1_, "content", nil, nil, false)
+      preopenHolder(_UPVALUE0_, "primary-" .. _UPVALUE1_, "primary", nil, nil, false)
+      preopenHolder(_UPVALUE0_, "secondry-" .. _UPVALUE1_, "secondry", nil, nil, false)
+      if not Config.DisableClothing then
+        for _FORV_17_, _FORV_18_ in pairs(Config.InventoryClothing) do
+          if not Config.Inventories[_FORV_17_] then
+            print("[Core Inventory] No inventory created for clothing " .. _FORV_17_)
+            return
+          end
+          preopenHolder(_UPVALUE0_, _FORV_17_ .. "-" .. _UPVALUE1_, _FORV_17_, nil, nil, false)
         end
-    end
-)
+      end
+    end)
+  end
+end)
+
 RegisterServerEvent("core_inventory:server:handleAttachment")
 AddEventHandler(
     "core_inventory:server:handleAttachment",
@@ -1070,41 +1006,37 @@ AddEventHandler(
     end
 )
 RegisterServerEvent("core_inventory:server:updateSettings")
-AddEventHandler(
-    "core_inventory:server:updateSettings",
-    function(_ARG_0_)
+AddEventHandler("core_inventory:server:updateSettings",function(_ARG_0_)
         ({}).cid, ({}).settings = ESX.GetPlayerFromId(source).getIdentifier(), json.encode(_ARG_0_)
         exports.oxmysql:update(
-            "UPDATE `users` SET `inventorysettings`= :settings WHERE `identifier` = :cid",
-            {},
+            "UPDATE `users` SET `inventorysettings`= :settings WHERE `identifier` = @cid",
+            {["@cid"] = ESX.GetPlayerFromId(source).getIdentifier()},
             function()
             end
         )
     end
 )
+
 RegisterServerEvent("core_inventory:server:createDrop")
-AddEventHandler(
-    "core_inventory:server:createDrop",
-    function(_ARG_0_, _ARG_1_)
-        ({})[_ARG_0_] =
-            ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[_ARG_0_]
-        ({})[_ARG_0_].slot = 1
-        removeItemExact("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)
-        Drops["drop-" .. math.random(0, 9999)], ({}).coords = {}, _ARG_1_
-        ({}).content = {}
-        ({}).spectators = {}
-        ({}).type = "drop"
-        ({}).restrictedTo = "drop"
-        ({}).slots = ({})[_ARG_0_].x * ({})[_ARG_0_].y
-        ({}).hidden = false
-        ({}).name, ({}).rows = "drop-" .. math.random(0, 9999), ({})[_ARG_0_].x
-        ({}).label = (Config.Inventories.drop or {}).label or "DROP"
-        ({}).x = (Config.Inventories.drop or {}).x or 1
-        ActiveIncentories["drop-" .. math.random(0, 9999)], ({}).y = {}, (Config.Inventories.drop or {}).y or 1
-        TriggerClientEvent("core_inventory:client:syncDrops", -1, Drops)
-        openHolder(source, "drop-" .. math.random(0, 9999))
-    end
-)
+AddEventHandler("core_inventory:server:createDrop", function(_ARG_0_, _ARG_1_)
+  ({})[_ARG_0_] = ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[_ARG_0_]
+  ;({})[_ARG_0_].slot = 1
+  removeItemExact("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)
+  Drops["drop-" .. math.random(0, 9999)], ({}).coords = {}, _ARG_1_
+  ;({}).content = {}
+  ;({}).spectators = {}
+  ;({}).type = "drop"
+  ;({}).restrictedTo = "drop"
+  ;({}).slots = ({})[_ARG_0_].x * ({})[_ARG_0_].y
+  ;({}).hidden = false
+  ;({}).name, ({}).rows = "drop-" .. math.random(0, 9999), ({})[_ARG_0_].x
+  ;({}).label = (Config.Inventories.drop or {}).label or "DROP"
+  ;({}).x = (Config.Inventories.drop or {}).x or 1
+  ActiveIncentories["drop-" .. math.random(0, 9999)], ({}).y = {}, (Config.Inventories.drop or {}).y or 1
+  TriggerClientEvent("core_inventory:client:syncDrops", -1, Drops)
+  openHolder(source, "drop-" .. math.random(0, 9999))
+end)
+
 RegisterServerEvent("core_inventory:server:openDrop")
 AddEventHandler(
     "core_inventory:server:openDrop",
