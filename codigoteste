@@ -1,0 +1,1346 @@
+ActiveIncentories = {}
+Inventory = {}
+Drops = {}
+DynamicItems = {}
+UsedItems = {}
+Items = {}
+ESX = nil
+
+TriggerEvent(
+    "esx:getSharedObject",
+    function(_ARG_0_)
+        ESX = _ARG_0_
+    end
+)
+
+Citizen.CreateThread(
+    function()
+        exports.oxmysql:query(
+            "SELECT * FROM items WHERE 1",
+            {},
+            function(_ARG_0_)
+                for _FORV_12_, _FORV_13_ in ipairs(_ARG_0_) do
+                    Items[_FORV_13_.name] = _FORV_13_
+                end
+            end
+        )
+    end
+)
+ESX.RegisterServerCallback(
+    "core_inventory:server:getInventory",
+    function(_ARG_0_, _ARG_1_)
+        _ARG_1_(getInventory("content-" .. ESX.GetPlayerFromId(_ARG_0_).getIdentifier():gsub(":", "")))
+    end
+)
+ESX.RegisterServerCallback(
+    "core_inventory:server:getBackpacks",
+    function(_ARG_0_, _ARG_1_)
+        if ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_0_).getIdentifier():gsub(":", "")] then
+            for _FORV_15_, _FORV_16_ in pairs(
+                ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_0_).getIdentifier():gsub(":", "")].content
+            ) do
+                if _FORV_16_.backpackModel then
+                    ({})[_FORV_15_] = _FORV_16_
+                end
+            end
+            _ARG_1_({})
+        else
+            _ARG_1_({})
+        end
+    end
+)
+RegisterServerEvent(
+    "core_inventory:server:addDynamicItem",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_)
+        _ARG_3_ = _ARG_3_ or "content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")
+        DynamicItems[_ARG_0_] = _ARG_4_
+        addItem(_ARG_3_, _ARG_0_, _ARG_1_, _ARG_2_)
+    end
+)
+ESX.RegisterCommand(
+    "giveitem",
+    "admin",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        if tonumber(_ARG_1_[3]) > 0 and nil ~= ESX.GetPlayerFromId(tonumber(_ARG_1_[1])) then
+            if nil ~= Items[tostring(_ARG_1_[2]):lower()] then
+                if nil ~= tonumber(_ARG_1_[1]) then
+                end
+                addItem(
+                    "content-" .. ESX.GetPlayerFromId(tonumber(_ARG_1_[1])).getIdentifier():gsub(":", ""),
+                    _ARG_1_[2],
+                    tonumber(_ARG_1_[3]),
+                    (defaultMetadata(source, Items[tostring(_ARG_1_[2]):lower()], json.decode(_ARG_1_[4]) or {}))
+                )
+            else
+                sendTextMessage(tonumber(_ARG_1_[1]), Config.Text.item_does_not_exist)
+            end
+        else
+            sendTextMessage(tonumber(_ARG_1_[1]), Config.Text.wrong_syntax)
+        end
+    end
+)
+ESX.RegisterCommand(
+    "removeitem",
+    "admin",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        if tonumber(_ARG_1_[3]) > 0 and nil ~= ESX.GetPlayerFromId(tonumber(_ARG_1_[1])) then
+            if nil ~= Items[tostring(_ARG_1_[2]):lower()] then
+                if nil ~= tonumber(_ARG_1_[1]) then
+                end
+                removeItem(
+                    "content-" .. ESX.GetPlayerFromId(tonumber(_ARG_1_[1])).getIdentifier():gsub(":", ""),
+                    _ARG_1_[2],
+                    (tonumber(_ARG_1_[3]))
+                )
+            else
+                sendTextMessage(tonumber(_ARG_1_[1]), Config.Text.item_does_not_exist)
+            end
+        else
+            sendTextMessage(tonumber(_ARG_1_[1]), Config.Text.wrong_syntax)
+        end
+    end,
+    "admin"
+)
+ESX.RegisterCommand(
+    "clearinventory",
+    "admin",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        if nil ~= ESX.GetPlayerFromId(tonumber(_ARG_1_[1])) then
+            if nil ~= tonumber(_ARG_1_[1]) then
+            end
+            clearInventory("content-" .. ESX.GetPlayerFromId(tonumber(_ARG_1_[1])).getIdentifier():gsub(":", ""))
+        else
+            sendTextMessage(tonumber(_ARG_1_[1]), Config.Text.wrong_syntax)
+        end
+    end,
+    "admin"
+)
+
+function sendTextMessage(_ARG_0_, _ARG_1_)
+    TriggerClientEvent("core_inventory:client:sendTextMessage", _ARG_0_, _ARG_1_)
+end
+function removeDurability(_ARG_0_, _ARG_1_, _ARG_2_)
+    if
+        (ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability or nil) and
+            (ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability or nil) - _ARG_2_ >= 0
+     then
+        ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability =
+            (ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability or nil) - _ARG_2_
+    end
+end
+function setDurability(_ARG_0_, _ARG_1_, _ARG_2_)
+    if (ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability or nil) and (_ARG_2_ >= 0 or _ARG_2_ <= 100) then
+        ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata.durability = _ARG_2_
+    end
+end
+function firstInventory(_ARG_0_, _ARG_1_)
+    if ESX.GetPlayerFromId(_ARG_1_) then
+        if Config.SyncOldInventory then
+            ({}).cid = ESX.GetPlayerFromId(_ARG_1_).getIdentifier()
+            exports.oxmysql:query(
+                "SELECT inventory FROM users WHERE identifier = :cid",
+                {},
+                function(_ARG_0_)
+                    if nil ~= _ARG_0_[1] then
+                        for _FORV_16_, _FORV_17_ in pairs((json.decode(_ARG_0_[1].inventory))) do
+                            addItem(_UPVALUE0_, _FORV_16_, _FORV_17_.count, _FORV_17_.metadata or {})
+                        end
+                        ({}).cid = _UPVALUE1_
+                        exports.oxmysql:update(
+                            "UPDATE `users` SET `inventory` = '[]' WHERE identifier = :cid",
+                            {},
+                            function()
+                            end
+                        )
+                    end
+                end
+            )
+        end
+        for _FORV_18_, _FORV_19_ in pairs(Config.StartItems) do
+            addItem(_ARG_0_, _FORV_18_, _FORV_19_.amount, _FORV_19_.metadata)
+        end
+    end
+end
+function openLoot(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_)
+    preopenInventory(_ARG_0_, "loot-" .. math.random(1, 9999), _ARG_1_, nil, nil, true)
+    Wait(500)
+    for _FORV_20_ = 1, math.random(_ARG_3_, _ARG_4_) do
+        Wait(math.random(500, 2000))
+        while not false do
+            if math.random(1, 100) <= _ARG_2_[math.random(1, #_ARG_2_)][2] then
+                addItem("loot-" .. math.random(1, 9999), tostring(_ARG_2_[math.random(1, #_ARG_2_)][1]), 1, {})
+            end
+        end
+    end
+end
+function getAvailableSlot(_ARG_0_, _ARG_1_)
+    for _FORV_22_, _FORV_23_ in pairs(ActiveIncentories[_ARG_0_].content) do
+        for _FORV_27_ = _FORV_23_.slot, _FORV_23_.slot + (_FORV_23_.y - 1) * ActiveIncentories[_ARG_0_].rows, ActiveIncentories[
+            _ARG_0_
+        ].rows do
+            for _FORV_31_ = _FORV_27_, _FORV_27_ + (_FORV_23_.x - 1) do
+                ({})[_FORV_31_] = true
+            end
+        end
+    end
+    for _FORV_22_ = 0, ActiveIncentories[_ARG_0_].slots do
+        for _FORV_26_ = _FORV_22_, _FORV_22_ + (_ARG_1_.y - 1) * ActiveIncentories[_ARG_0_].rows, ActiveIncentories[
+            _ARG_0_
+        ].rows do
+            if
+                _FORV_26_ + _ARG_1_.x >
+                    math.ceil((_FORV_26_ + 1) / ActiveIncentories[_ARG_0_].rows) * ActiveIncentories[_ARG_0_].rows
+             then
+            else
+                for _FORV_30_ = _FORV_26_, _FORV_26_ + (_ARG_1_.x - 1) do
+                end
+            end
+        end
+        if not true then
+            return _FORV_22_
+        end
+    end
+    return nil
+end
+function getItem(_ARG_0_, _ARG_1_)
+    if ActiveIncentories[_ARG_0_] and Items[_ARG_1_] then
+        Items[_ARG_1_].count = 0
+        Items[_ARG_1_].info = Items[_ARG_1_].metadata
+        for _FORV_14_, _FORV_15_ in pairs(ActiveIncentories[_ARG_0_].content) do
+            if _FORV_15_.name == _ARG_1_ then
+                Items[_ARG_1_].count = Items[_ARG_1_].count + (_FORV_15_.amount or 1)
+            end
+        end
+        return Items[_ARG_1_]
+    else
+        return nil
+    end
+end
+function getItems(_ARG_0_, _ARG_1_)
+    if ActiveIncentories[_ARG_0_] and Items[_ARG_1_] then
+        for _FORV_21_, _FORV_22_ in pairs(ActiveIncentories[_ARG_0_].content) do
+            if _FORV_22_.name == _ARG_1_ then
+                copy(Items[_ARG_1_]).info = _FORV_22_.metadata
+                copy(Items[_ARG_1_]).metadata = _FORV_22_.metadata
+                copy(Items[_ARG_1_]).count = 1
+                if _FORV_22_.amount then
+                    for _FORV_26_ = 1, _FORV_22_.amount do
+                        table.insert({}, (copy(Items[_ARG_1_])))
+                    end
+                else
+                    table.insert({}, (copy(Items[_ARG_1_])))
+                end
+            end
+        end
+        return {}
+    else
+        return nil
+    end
+end
+function updateMetadata(_ARG_0_, _ARG_1_, _ARG_2_)
+    if ActiveIncentories[_ARG_0_].content[_ARG_1_] then
+        ActiveIncentories[_ARG_0_].content[_ARG_1_].metadata = _ARG_2_
+    end
+    saveInventory(_ARG_0_)
+    for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+        if _FORV_18_ then
+            TriggerClientEvent("core_inventory:client:sync", _FORV_17_, _ARG_0_, ActiveIncentories[_ARG_0_])
+        end
+    end
+end
+
+function getInventory(name)
+    if ActiveIncentories[name] then
+        local inventory = {}
+        for index, value in pairs(ActiveIncentories[name].content) do
+            if Items[value.name] and not ActiveIncentories[value.name] then
+                local copiedItem = table.deepcopy(Items[value.name])
+                copiedItem.info = value.metadata
+                copiedItem.metadata = value.metadata
+                copiedItem.count = value.amount or 1
+                copiedItem.id = value.id
+                ActiveIncentories[value.name] = true
+                table.insert(inventory, copiedItem)
+            end
+        end
+        return inventory
+    else
+        return {}
+    end
+end
+
+function canCarry(name, item, amount)
+    for index = 1, amount do
+        if not Items[item] and DynamicItems[item] then
+        end
+        if ActiveIncentories[name] and DynamicItems[item] then
+            DynamicItems[item].x = DynamicItems[item].x or Config.DefaultItemSizeX
+            DynamicItems[item].y = DynamicItems[item].y or Config.DefaultItemSizeY
+
+
+
+
+            ({}).x = DynamicItems[item].x or 1
+            ({}).y = DynamicItems[item].y or 1
+            ({}).id, ({}).slot = item .. "-" .. math.random(0, 99999), 0
+            ({}).name = item
+            ({}).flipped = 0
+            if not (DynamicItems[item].category or "misc") then
+            end
+            ({}).category = "misc"
+
+            ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)], ({}).metadata = {},  metadata or {}
+
+
+            if nil == getAvailableSlot(name, DynamicItems[item]) then
+                sendTextMessage(Config.Text.no_space)
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)] = nil
+                for _FORV_31_, _FORV_32_ in pairs({}) do
+                    removeItemExact(name, _FORV_31_)
+                end
+                return false
+            else
+                
+                ({})[item .. "-" .. math.random(0, 99999)] = true
+                
+                
+                
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].slot =
+                getAvailableSlot(name, DynamicItems[item])
+            end
+            if DynamicItems[item].componentHash then
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].componentHash =
+                DynamicItems[item].componentHash
+            end
+            if DynamicItems[item].componentTint then
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].componentTint =
+                DynamicItems[item].componentTint
+            end
+            if DynamicItems[item].backpackModel then
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].backpackModel =
+                    DynamicItems[item].backpackModel
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].backpackTexture =
+                    DynamicItems[item].backpackTexture or 1
+            end
+            if Config.ItemCategories[DynamicItems[item].category or "misc"].durability then
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.durability =
+                    Config.DefaultDurability
+            end
+            if Config.ItemCategories[DynamicItems[item].category or "misc"].serial then
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.serial =
+                    string.upper(
+                    string.char(math.random(97, 122)) ..
+                        string.char(math.random(97, 122)) ..
+                            math.random(0, 9) ..
+                                math.random(0, 9) ..
+                                    math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9)
+                )
+            end
+            if "weapons" == ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].category then
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.attachments = {}
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.ammo = 0
+                ActiveIncentories[name].content[item .. "-" .. math.random(0, 99999)].metadata.aquired = name
+            end
+            saveInventory(name)
+            for _FORV_31_, _FORV_32_ in pairs(ActiveIncentories[name].spectators) do
+                if _FORV_32_ then
+                    TriggerClientEvent("core_inventory:client:sync", _FORV_31_, name, ActiveIncentories[name])
+                end
+            end
+        end
+    end
+
+    for index, _FORV_28_ in pairs({}) do
+        removeItemExact(name, index)
+    end
+
+    return true
+end
+
+function addItem(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+    if not Items[_ARG_1_] then
+        return
+    end
+    if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+        _ARG_2_ = math.floor(_ARG_2_ / Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack + 0.5)
+        if 0 == _ARG_2_ then
+            _ARG_2_ = 1
+        end
+    end
+    for _FORV_29_ = 1, _ARG_2_ do
+        if not Items[_ARG_1_] and DynamicItems[_ARG_1_] then
+        end
+        if ActiveIncentories[_ARG_0_] and DynamicItems[_ARG_1_] then
+            DynamicItems[_ARG_1_].x = DynamicItems[_ARG_1_].x or Config.DefaultItemSizeX
+            DynamicItems[_ARG_1_].y = DynamicItems[_ARG_1_].y or Config.DefaultItemSizeY
+            ({}).x = DynamicItems[_ARG_1_].x or 1
+            ({}).y = DynamicItems[_ARG_1_].y or 1
+            ({}).id, ({}).slot = _ARG_1_ .. "-" .. math.random(0, 99999), 0
+            ({}).name = _ARG_1_
+            ({}).flipped = 0
+            if not (Items[_ARG_1_].category or "misc") then
+            end
+            ({}).category = "misc"
+            if not _ARG_3_ then
+            end
+            ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)], ({}).metadata = {}, {}
+            if nil == getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_]) then
+                sendTextMessage(Config.Text.no_space)
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)] = nil
+                for _FORV_33_, _FORV_34_ in pairs({}) do
+                    removeItemExact(_ARG_0_, _FORV_33_)
+                end
+                return false
+            else
+                ({})[_ARG_1_ .. "-" .. math.random(0, 99999)] = true
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].slot =
+                    getAvailableSlot(_ARG_0_, DynamicItems[_ARG_1_])
+            end
+            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+                if _ARG_2_ >= Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+                    ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].amount =
+                        Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack
+                else
+                    ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].amount =
+                        _ARG_2_ - Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack
+                end
+            end
+            if DynamicItems[_ARG_1_].componentHash then
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentHash =
+                    DynamicItems[_ARG_1_].componentHash
+            end
+            if DynamicItems[_ARG_1_].componentTint then
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].componentTint =
+                    DynamicItems[_ARG_1_].componentTint
+            end
+            if DynamicItems[_ARG_1_].backpackModel then
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackModel =
+                    DynamicItems[_ARG_1_].backpackModel
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].backpackTexture =
+                    DynamicItems[_ARG_1_].backpackTexture or 1
+            end
+            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].durability then
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.durability =
+                    Config.DefaultDurability
+            end
+            if Config.ItemCategories[Items[_ARG_1_].category or "misc"].serial then
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.serial =
+                    string.upper(
+                    string.char(math.random(97, 122)) ..
+                        string.char(math.random(97, 122)) ..
+                            math.random(0, 9) ..
+                                math.random(0, 9) ..
+                                    math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9) .. math.random(0, 9)
+                )
+            end
+            if "weapons" == ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].category then
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.attachments = {}
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.ammo = 0
+                ActiveIncentories[_ARG_0_].content[_ARG_1_ .. "-" .. math.random(0, 99999)].metadata.aquired = _ARG_0_
+            end
+            saveInventory(_ARG_0_)
+            for _FORV_33_, _FORV_34_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+                if _FORV_34_ then
+                    TriggerClientEvent("core_inventory:client:sync", _FORV_33_, _ARG_0_, ActiveIncentories[_ARG_0_])
+                end
+            end
+        end
+    end
+    return true
+end
+function clearInventory(_ARG_0_)
+    if ActiveIncentories[_ARG_0_] then
+        ActiveIncentories[_ARG_0_].content = {}
+        saveInventory(_ARG_0_)
+        for _FORV_15_, _FORV_16_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+            if _FORV_16_ then
+                TriggerClientEvent("core_inventory:client:sync", _FORV_15_, _ARG_0_, ActiveIncentories[_ARG_0_])
+            end
+        end
+    end
+end
+function removeItemExact(_ARG_0_, _ARG_1_, _ARG_2_)
+    if _ARG_2_ then
+        if _ARG_2_ < ActiveIncentories[_ARG_0_].content[_ARG_1_].amount then
+            ActiveIncentories[_ARG_0_].content[_ARG_1_].amount =
+                ActiveIncentories[_ARG_0_].content[_ARG_1_].amount - _ARG_2_
+        else
+            ActiveIncentories[_ARG_0_].content[_ARG_1_] = nil
+        end
+    else
+        ActiveIncentories[_ARG_0_].content[_ARG_1_] = nil
+    end
+    saveInventory(_ARG_0_)
+    for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+        if _FORV_18_ then
+            TriggerClientEvent("core_inventory:client:sync", _FORV_17_, _ARG_0_, ActiveIncentories[_ARG_0_])
+        end
+    end
+end
+function removeItem(_ARG_0_, _ARG_1_, _ARG_2_)
+    if
+        1 == _ARG_2_ and UsedItems[_ARG_0_] and ActiveIncentories[_ARG_0_].content[UsedItems[_ARG_0_]] and
+            ActiveIncentories[_ARG_0_].content[UsedItems[_ARG_0_]].name == _ARG_1_
+     then
+        removeItemExact(_ARG_0_, UsedItems[_ARG_0_], 1)
+        UsedItems[_ARG_0_] = nil
+        return true
+    end
+    for _FORV_31_ = 1, _ARG_2_ do
+        if 0 == _ARG_2_ then
+            break
+        end
+        if ActiveIncentories[_ARG_0_] then
+            for _FORV_35_, _FORV_36_ in pairs(ActiveIncentories[_ARG_0_].content) do
+                if _FORV_36_.name == _ARG_1_ and _FORV_36_.metadata == {} then
+                    if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+                        if _ARG_2_ < ActiveIncentories[_ARG_0_].content[_FORV_35_].amount then
+                            ActiveIncentories[_ARG_0_].content[_FORV_35_].amount =
+                                ActiveIncentories[_ARG_0_].content[_FORV_35_].amount - _ARG_2_
+                        else
+                            ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+                        end
+                    else
+                        ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+                    end
+                    saveInventory(_ARG_0_)
+                    for _FORV_40_, _FORV_41_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+                        if _FORV_41_ then
+                            TriggerClientEvent(
+                                "core_inventory:client:sync",
+                                _FORV_40_,
+                                _ARG_0_,
+                                ActiveIncentories[_ARG_0_]
+                            )
+                        end
+                    end
+                    break
+                end
+            end
+            if not true then
+                for _FORV_35_, _FORV_36_ in pairs(ActiveIncentories[_ARG_0_].content) do
+                    if _FORV_36_.name == _ARG_1_ then
+                        if Config.ItemCategories[Items[_ARG_1_].category or "misc"].stack then
+                            if
+                                0 - ActiveIncentories[_ARG_0_].content[_FORV_35_].amount <
+                                    ActiveIncentories[_ARG_0_].content[_FORV_35_].amount
+                             then
+                                ActiveIncentories[_ARG_0_].content[_FORV_35_].amount =
+                                    ActiveIncentories[_ARG_0_].content[_FORV_35_].amount -
+                                    (0 - ActiveIncentories[_ARG_0_].content[_FORV_35_].amount)
+                            else
+                                ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+                            end
+                        else
+                            ActiveIncentories[_ARG_0_].content[_FORV_35_] = nil
+                        end
+                        saveInventory(_ARG_0_)
+                        for _FORV_40_, _FORV_41_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+                            if _FORV_41_ then
+                                TriggerClientEvent(
+                                    "core_inventory:client:sync",
+                                    _FORV_40_,
+                                    _ARG_0_,
+                                    ActiveIncentories[_ARG_0_]
+                                )
+                            end
+                        end
+                        break
+                    end
+                end
+            end
+            if not true then
+                sendTextMessage(Config.Text.no_such_item)
+                return false
+            end
+        end
+    end
+    return true
+end
+function openHolder(_ARG_0_, _ARG_1_)
+    if ActiveIncentories[_ARG_1_] then
+        ActiveIncentories[_ARG_1_].spectators[_ARG_0_] = true
+        TriggerClientEvent(
+            "core_inventory:client:openHolder",
+            _ARG_0_,
+            ActiveIncentories[_ARG_1_].name,
+            ActiveIncentories[_ARG_1_].slots,
+            ActiveIncentories[_ARG_1_].rows,
+            ActiveIncentories[_ARG_1_].content,
+            ActiveIncentories[_ARG_1_].label,
+            ActiveIncentories[_ARG_1_].x,
+            ActiveIncentories[_ARG_1_].y,
+            ActiveIncentories[_ARG_1_].restrictedTo,
+            ActiveIncentories[_ARG_1_].hidden,
+            ActiveIncentories[_ARG_1_].type
+        )
+    end
+end
+function openInventory(_ARG_0_, _ARG_1_)
+    if ActiveIncentories[_ARG_1_] then
+        ActiveIncentories[_ARG_1_].spectators[_ARG_0_] = true
+        TriggerClientEvent(
+            "core_inventory:client:openInventory",
+            _ARG_0_,
+            ActiveIncentories[_ARG_1_].name,
+            ActiveIncentories[_ARG_1_].slots,
+            ActiveIncentories[_ARG_1_].rows,
+            ActiveIncentories[_ARG_1_].content,
+            ActiveIncentories[_ARG_1_].label,
+            ActiveIncentories[_ARG_1_].x,
+            ActiveIncentories[_ARG_1_].y,
+            ActiveIncentories[_ARG_1_].hidden,
+            ActiveIncentories[_ARG_1_].type,
+            ActiveIncentories[_ARG_1_].restrictedTo
+        )
+    end
+end
+function saveInventory(_ARG_0_)
+    if not ActiveIncentories[_ARG_0_] then
+        return
+    end
+    ({}).inventory = _ARG_0_
+    exports.oxmysql:update(
+        "DELETE FROM coreinventories WHERE name = :inventory",
+        {},
+        function()
+            if nil == next(ActiveIncentories[_UPVALUE0_].content) or nil ~= ActiveIncentories[_UPVALUE0_].type then
+            end
+            if Config.Inventories[ActiveIncentories[_UPVALUE0_].type].alwaysSave then
+                ({}).inventory = _UPVALUE0_
+                ({}).data = json.encode(ActiveIncentories[_UPVALUE0_])
+                exports.oxmysql:update(
+                    "REPLACE INTO coreinventories (name, data) values(:inventory, :data)",
+                    {},
+                    function()
+                    end
+                )
+            end
+        end
+    )
+end
+function fixNaming(_ARG_0_)
+    return (_ARG_0_:gsub(" ", ""))
+end
+function preopenHolder(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_, _ARG_5_, _ARG_6_)
+    _ARG_1_ = fixNaming(_ARG_1_)
+    if nil == Config.Inventories[_ARG_2_] then
+        print("[Core Inventory] Holder type not found! (Create type " .. _ARG_2_ .. " in Config)")
+        return
+    end
+    if nil == _ARG_3_ or nil == _ARG_4_ then
+        _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
+        if not Config.Inventories[_ARG_2_].x then
+            _ARG_3_ = 1
+        end
+        _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
+        if not Config.Inventories[_ARG_2_].y then
+            _ARG_4_ = 1
+        end
+    end
+    if not ActiveIncentories[_ARG_1_] then
+        ({}).name = _ARG_1_
+        exports.oxmysql:query(
+            "SELECT data FROM coreinventories WHERE name = :name",
+            {},
+            function(_ARG_0_)
+                if nil == _ARG_0_[1] then
+                    ({}).content = _UPVALUE0_ or {}
+                    ({}).x = _UPVALUE1_
+                    ({}).y = _UPVALUE2_
+                    ({}).hidden = false
+                else
+                end
+                ({}).content = json.decode(_ARG_0_[1].data).content or {}
+                ({}).spectators = {}
+                ({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
+                ({}).type = _UPVALUE4_
+                ({}).restrictedTo = _UPVALUE5_.restrictedTo or nil
+                ({}).slots = _UPVALUE5_.slots
+                ({}).rows = _UPVALUE5_.rows
+                ({}).name = _UPVALUE3_
+                ({}).label = _UPVALUE5_.label
+                ({}).x = json.decode(_ARG_0_[1].data).x
+                ActiveIncentories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
+                for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_UPVALUE3_].content) do
+                    TriggerClientEvent("core_inventory:client:holderData", _UPVALUE6_, _UPVALUE3_, _FORV_18_)
+                end
+                if not true then
+                    TriggerClientEvent("core_inventory:client:holderData", _UPVALUE6_, _UPVALUE3_, nil)
+                end
+                if _UPVALUE7_ then
+                    openHolder(_UPVALUE6_, _UPVALUE3_)
+                end
+            end
+        )
+    else
+        if _ARG_5_ then
+            openHolder(_ARG_0_, _ARG_1_)
+        end
+        for _FORV_23_, _FORV_24_ in pairs(ActiveIncentories[_ARG_1_].content) do
+            TriggerClientEvent("core_inventory:client:holderData", _ARG_0_, _ARG_1_, _FORV_24_)
+        end
+        if not true then
+            TriggerClientEvent("core_inventory:client:holderData", _ARG_0_, _ARG_1_, nil)
+        end
+    end
+end
+function preopenInventory(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_, _ARG_5_, _ARG_6_)
+    _ARG_1_ = fixNaming(_ARG_1_)
+    if nil == Config.Inventories[_ARG_2_] then
+        print("[Core Inventory] Inventory type not found! (Create type " .. _ARG_2_ .. " in Config)")
+        return
+    end
+    if nil == _ARG_3_ or nil == _ARG_4_ then
+        _ARG_3_ = Config.Inventories[_ARG_2_].x or _ARG_3_
+        if not Config.Inventories[_ARG_2_].x then
+            _ARG_3_ = 1
+        end
+        _ARG_4_ = Config.Inventories[_ARG_2_].y or _ARG_4_
+        if not Config.Inventories[_ARG_2_].y then
+            _ARG_4_ = 1
+        end
+    end
+    if not ActiveIncentories[_ARG_1_] then
+        ({}).name = _ARG_1_
+        exports.oxmysql:query(
+            "SELECT data FROM coreinventories WHERE name = :name",
+            {},
+            function(_ARG_0_)
+                if nil == _ARG_0_[1] then
+                    ({}).content = _UPVALUE0_ or {}
+                    ({}).x = _UPVALUE1_
+                    ({}).y = _UPVALUE2_
+                    ({}).hidden = false
+                else
+                end
+                ({}).content = json.decode(_ARG_0_[1].data).content or {}
+                ({}).spectators = {}
+                ({}).hidden = json.decode(_ARG_0_[1].data).hidden or false
+                ({}).restrictedTo = _UPVALUE4_.restrictedTo or nil
+                ({}).type = _UPVALUE5_
+                ({}).slots = _UPVALUE4_.slots
+                ({}).rows = _UPVALUE4_.rows
+                ({}).name = _UPVALUE3_
+                ({}).label = _UPVALUE4_.label
+                ({}).x = json.decode(_ARG_0_[1].data).x
+                ActiveIncentories[_UPVALUE3_], ({}).y = {}, json.decode(_ARG_0_[1].data).y
+                if _UPVALUE6_ then
+                    openInventory(_UPVALUE7_, _UPVALUE3_)
+                end
+                if true and "content" == _UPVALUE5_ then
+                    firstInventory(_UPVALUE3_, _UPVALUE7_)
+                end
+            end
+        )
+    elseif _ARG_5_ then
+        openInventory(_ARG_0_, _ARG_1_)
+    end
+end
+RegisterServerEvent("core_inventory:server:openLoot")
+AddEventHandler(
+    "core_inventory:server:openLoot",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+        openLoot(source, _ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+    end
+)
+RegisterServerEvent("core_inventory:server:removeThrowable")
+AddEventHandler(
+    "core_inventory:server:removeThrowable",
+    function(_ARG_0_)
+        clearInventory(_ARG_0_)
+    end
+)
+function copy(_ARG_0_)
+    if "table" ~= type(_ARG_0_) then
+        return _ARG_0_
+    end
+    for _FORV_14_, _FORV_15_ in pairs(_ARG_0_) do
+        ({})[copy(_FORV_14_)] = copy(_FORV_15_)
+    end
+    return {}
+end
+RegisterServerEvent("core_inventory:server:splitItems")
+AddEventHandler(
+    "core_inventory:server:splitItems",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_)
+        if 0 < ActiveIncentories[_ARG_2_].content[_ARG_0_].amount - _ARG_4_ then
+            ActiveIncentories[_ARG_2_].content[_ARG_0_].amount =
+                ActiveIncentories[_ARG_2_].content[_ARG_0_].amount - _ARG_4_
+            ActiveIncentories[_ARG_3_].content[
+                    ActiveIncentories[_ARG_2_].content[_ARG_0_].name .. "-" .. math.random(0, 99999)
+                ] = copy(ActiveIncentories[_ARG_2_].content[_ARG_0_])
+            ActiveIncentories[_ARG_3_].content[
+                    ActiveIncentories[_ARG_2_].content[_ARG_0_].name .. "-" .. math.random(0, 99999)
+                ].slot = _ARG_1_
+            ActiveIncentories[_ARG_3_].content[
+                    ActiveIncentories[_ARG_2_].content[_ARG_0_].name .. "-" .. math.random(0, 99999)
+                ].id = ActiveIncentories[_ARG_2_].content[_ARG_0_].name .. "-" .. math.random(0, 99999)
+            ActiveIncentories[_ARG_3_].content[
+                    ActiveIncentories[_ARG_2_].content[_ARG_0_].name .. "-" .. math.random(0, 99999)
+                ].amount = _ARG_4_
+            if ActiveIncentories[_ARG_3_] then
+                for _FORV_20_, _FORV_21_ in pairs(ActiveIncentories[_ARG_3_].spectators) do
+                    if _FORV_21_ then
+                        TriggerClientEvent("core_inventory:client:sync", _FORV_20_, _ARG_3_, ActiveIncentories[_ARG_3_])
+                    end
+                end
+            end
+            if ActiveIncentories[_ARG_2_] and _ARG_2_ ~= _ARG_3_ then
+                for _FORV_20_, _FORV_21_ in pairs(ActiveIncentories[_ARG_2_].spectators) do
+                    if _FORV_21_ then
+                        TriggerClientEvent("core_inventory:client:sync", _FORV_20_, _ARG_2_, ActiveIncentories[_ARG_2_])
+                    end
+                end
+            end
+            if _ARG_2_ ~= _ARG_3_ then
+                saveInventory(_ARG_2_)
+                saveInventory(_ARG_3_)
+            else
+                saveInventory(_ARG_2_)
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:giveItem")
+AddEventHandler(
+    "core_inventory:server:giveItem",
+    function(_ARG_0_, _ARG_1_)
+        if not ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")] then
+            preopenInventory(
+                source,
+                "content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", ""),
+                "content",
+                nil,
+                nil,
+                false
+            )
+            Wait(100)
+        end
+        if
+            getAvailableSlot(
+                "content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", ""),
+                (copy(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                        _ARG_0_
+                    ]
+                ))
+            )
+         then
+            removeItemExact("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)
+            copy(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                        _ARG_0_
+                    ]
+                ).slot =
+                getAvailableSlot(
+                "content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", ""),
+                (copy(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                        _ARG_0_
+                    ]
+                ))
+            )
+            ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")].content[_ARG_0_] =
+                copy(
+                ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                    _ARG_0_
+                ]
+            )
+            if ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")] then
+                for _FORV_23_, _FORV_24_ in pairs(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")].spectators
+                ) do
+                    if _FORV_24_ then
+                        TriggerClientEvent(
+                            "core_inventory:client:sync",
+                            _FORV_23_,
+                            "content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", ""),
+                            ActiveIncentories["content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")]
+                        )
+                    end
+                end
+            end
+            if
+                ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")] and
+                    "content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "") ~=
+                        "content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")
+             then
+                for _FORV_23_, _FORV_24_ in pairs(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].spectators
+                ) do
+                    if _FORV_24_ then
+                        TriggerClientEvent(
+                            "core_inventory:client:sync",
+                            _FORV_23_,
+                            "content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""),
+                            ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")]
+                        )
+                    end
+                end
+            end
+            TriggerClientEvent("core_inventory:client:handshake", source, _ARG_1_)
+            TriggerClientEvent("core_inventory:client:handshake", _ARG_1_, source)
+            if
+                "content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "") ~=
+                    "content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", "")
+             then
+                saveInventory("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""))
+                saveInventory("content-" .. ESX.GetPlayerFromId(_ARG_1_).getIdentifier():gsub(":", ""))
+            else
+                saveInventory("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""))
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:putItems")
+AddEventHandler(
+    "core_inventory:server:putItems",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+        if not ActiveIncentories[_ARG_2_] then
+            preopenInventory(source, _ARG_2_, _ARG_3_, nil, nil, false)
+            Wait(100)
+        end
+        if getAvailableSlot(_ARG_2_, (copy(ActiveIncentories[_ARG_1_].content[_ARG_0_]))) then
+            removeItemExact(_ARG_1_, _ARG_0_)
+            copy(ActiveIncentories[_ARG_1_].content[_ARG_0_]).slot =
+                getAvailableSlot(_ARG_2_, (copy(ActiveIncentories[_ARG_1_].content[_ARG_0_])))
+            ActiveIncentories[_ARG_2_].content[_ARG_0_] = copy(ActiveIncentories[_ARG_1_].content[_ARG_0_])
+            if ActiveIncentories[_ARG_2_] then
+                for _FORV_21_, _FORV_22_ in pairs(ActiveIncentories[_ARG_2_].spectators) do
+                    if _FORV_22_ then
+                        TriggerClientEvent("core_inventory:client:sync", _FORV_21_, _ARG_2_, ActiveIncentories[_ARG_2_])
+                    end
+                end
+            end
+            if ActiveIncentories[_ARG_1_] and _ARG_1_ ~= _ARG_2_ then
+                for _FORV_21_, _FORV_22_ in pairs(ActiveIncentories[_ARG_1_].spectators) do
+                    if _FORV_22_ then
+                        TriggerClientEvent("core_inventory:client:sync", _FORV_21_, _ARG_1_, ActiveIncentories[_ARG_1_])
+                    end
+                end
+            end
+            if _ARG_1_ ~= _ARG_2_ then
+                saveInventory(_ARG_1_)
+                saveInventory(_ARG_2_)
+            else
+                saveInventory(_ARG_1_)
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:stackItems")
+AddEventHandler(
+    "core_inventory:server:stackItems",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+        if
+            ActiveIncentories[_ARG_2_].content[_ARG_0_].name == ActiveIncentories[_ARG_3_].content[_ARG_1_].name and
+                ActiveIncentories[_ARG_2_].content[_ARG_0_].amount and
+                ActiveIncentories[_ARG_2_].content[_ARG_0_].amount + ActiveIncentories[_ARG_3_].content[_ARG_1_].amount <=
+                    Config.ItemCategories[ActiveIncentories[_ARG_2_].content[_ARG_0_].category].stack
+         then
+            ActiveIncentories[_ARG_3_].content[_ARG_1_].amount =
+                ActiveIncentories[_ARG_2_].content[_ARG_0_].amount + ActiveIncentories[_ARG_3_].content[_ARG_1_].amount
+            ActiveIncentories[_ARG_2_].content[_ARG_0_] = nil
+            if ActiveIncentories[_ARG_3_] then
+                for _FORV_20_, _FORV_21_ in pairs(ActiveIncentories[_ARG_3_].spectators) do
+                    if _FORV_21_ then
+                        TriggerClientEvent("core_inventory:client:sync", _FORV_20_, _ARG_3_, ActiveIncentories[_ARG_3_])
+                    end
+                end
+            end
+            if ActiveIncentories[_ARG_2_] and _ARG_2_ ~= _ARG_3_ then
+                for _FORV_20_, _FORV_21_ in pairs(ActiveIncentories[_ARG_2_].spectators) do
+                    if _FORV_21_ then
+                        TriggerClientEvent("core_inventory:client:sync", _FORV_20_, _ARG_2_, ActiveIncentories[_ARG_2_])
+                    end
+                end
+            end
+            if _ARG_2_ ~= _ARG_3_ then
+                saveInventory(_ARG_2_)
+                saveInventory(_ARG_3_)
+            else
+                saveInventory(_ARG_2_)
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:changeItemLocation")
+AddEventHandler(
+    "core_inventory:server:changeItemLocation",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, _ARG_4_)
+        if ActiveIncentories[_ARG_3_] then
+            if not ActiveIncentories[_ARG_3_].content[_ARG_0_] then
+                print("[Core Inventory] Attempted trigger manipulation by (ID: " .. source .. ")")
+                return
+            end
+            ActiveIncentories[_ARG_3_].content[_ARG_0_] = nil
+        end
+        if _ARG_4_.slot ~= _ARG_2_ then
+            _ARG_4_.slot = _ARG_2_
+        end
+        if ActiveIncentories[_ARG_1_] then
+            ActiveIncentories[_ARG_1_].content[_ARG_0_] = _ARG_4_
+        end
+        if ActiveIncentories[_ARG_1_] then
+            for _FORV_21_, _FORV_22_ in pairs(ActiveIncentories[_ARG_1_].spectators) do
+                if _FORV_22_ then
+                    TriggerClientEvent("core_inventory:client:sync", _FORV_21_, _ARG_1_, ActiveIncentories[_ARG_1_])
+                end
+            end
+        end
+        if ActiveIncentories[_ARG_3_] and _ARG_3_ ~= _ARG_1_ then
+            for _FORV_21_, _FORV_22_ in pairs(ActiveIncentories[_ARG_3_].spectators) do
+                if _FORV_22_ then
+                    TriggerClientEvent("core_inventory:client:sync", _FORV_21_, _ARG_3_, ActiveIncentories[_ARG_3_])
+                end
+            end
+            if _ARG_3_ ~= _ARG_1_ then
+                saveInventory(_ARG_3_)
+                saveInventory(_ARG_1_)
+            else
+                saveInventory(_ARG_3_)
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:loadClothes")
+AddEventHandler(
+    "core_inventory:server:loadClothes",
+    function()
+        if Config.DisableClothing then
+            return
+        end
+        if ESX.GetPlayerFromId(source) then
+            for _FORV_19_, _FORV_20_ in pairs(Config.InventoryClothing) do
+                if not Config.Inventories[_FORV_19_] then
+                    print("[Core Inventory] No inventory created for clothing " .. _FORV_19_)
+                    return
+                end
+                preopenHolder(
+                    source,
+                    _FORV_19_ .. "-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""),
+                    _FORV_19_,
+                    nil,
+                    nil,
+                    false
+                )
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:loadInventory")
+AddEventHandler(
+    "core_inventory:server:loadInventory",
+    function()
+        if ESX.GetPlayerFromId(source) then
+            ({}).cid = ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")
+            exports.oxmysql:scalar(
+                "SELECT inventorysettings FROM users WHERE identifier = :cid",
+                {},
+                function(_ARG_0_)
+                    if _ARG_0_ or "" ~= _ARG_0_ then
+                        _ARG_0_ = json.decode(_ARG_0_)
+                        TriggerClientEvent("core_inventory:client:setSettings", _UPVALUE0_, _ARG_0_, Items)
+                    end
+                    preopenInventory(_UPVALUE0_, "content-" .. _UPVALUE1_, "content", nil, nil, false)
+                    preopenHolder(_UPVALUE0_, "primary-" .. _UPVALUE1_, "primary", nil, nil, false)
+                    preopenHolder(_UPVALUE0_, "secondry-" .. _UPVALUE1_, "secondry", nil, nil, false)
+                    if not Config.DisableClothing then
+                        for _FORV_17_, _FORV_18_ in pairs(Config.InventoryClothing) do
+                            if not Config.Inventories[_FORV_17_] then
+                                print("[Core Inventory] No inventory created for clothing " .. _FORV_17_)
+                                return
+                            end
+                            preopenHolder(_UPVALUE0_, _FORV_17_ .. "-" .. _UPVALUE1_, _FORV_17_, nil, nil, false)
+                        end
+                    end
+                end
+            )
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:handleAttachment")
+AddEventHandler(
+    "core_inventory:server:handleAttachment",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[_ARG_0_].metadata.attachments[
+                _ARG_1_
+            ] = _ARG_2_
+    end
+)
+RegisterServerEvent("core_inventory:server:updateSettings")
+AddEventHandler(
+    "core_inventory:server:updateSettings",
+    function(_ARG_0_)
+        ({}).cid, ({}).settings = ESX.GetPlayerFromId(source).getIdentifier(), json.encode(_ARG_0_)
+        exports.oxmysql:update(
+            "UPDATE `users` SET `inventorysettings`= :settings WHERE `identifier` = :cid",
+            {},
+            function()
+            end
+        )
+    end
+)
+RegisterServerEvent("core_inventory:server:createDrop")
+AddEventHandler(
+    "core_inventory:server:createDrop",
+    function(_ARG_0_, _ARG_1_)
+        ({})[_ARG_0_] =
+            ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[_ARG_0_]
+        ({})[_ARG_0_].slot = 1
+        removeItemExact("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)
+        Drops["drop-" .. math.random(0, 9999)], ({}).coords = {}, _ARG_1_
+        ({}).content = {}
+        ({}).spectators = {}
+        ({}).type = "drop"
+        ({}).restrictedTo = "drop"
+        ({}).slots = ({})[_ARG_0_].x * ({})[_ARG_0_].y
+        ({}).hidden = false
+        ({}).name, ({}).rows = "drop-" .. math.random(0, 9999), ({})[_ARG_0_].x
+        ({}).label = (Config.Inventories.drop or {}).label or "DROP"
+        ({}).x = (Config.Inventories.drop or {}).x or 1
+        ActiveIncentories["drop-" .. math.random(0, 9999)], ({}).y = {}, (Config.Inventories.drop or {}).y or 1
+        TriggerClientEvent("core_inventory:client:syncDrops", -1, Drops)
+        openHolder(source, "drop-" .. math.random(0, 9999))
+    end
+)
+RegisterServerEvent("core_inventory:server:openDrop")
+AddEventHandler(
+    "core_inventory:server:openDrop",
+    function(_ARG_0_)
+        openHolder(source, _ARG_0_)
+    end
+)
+RegisterServerEvent("core_inventory:server:openPersonalInventory")
+AddEventHandler(
+    "core_inventory:server:openPersonalInventory",
+    function()
+        preopenInventory(
+            source,
+            "content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""),
+            "content",
+            nil,
+            nil,
+            true
+        )
+        preopenHolder(
+            source,
+            "primary-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""),
+            "primary",
+            nil,
+            nil,
+            true
+        )
+        preopenHolder(
+            source,
+            "secondry-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""),
+            "secondry",
+            nil,
+            nil,
+            true
+        )
+        if not Config.DisableClothing then
+            for _FORV_19_, _FORV_20_ in pairs(Config.InventoryClothing) do
+                if not Config.Inventories[_FORV_19_] then
+                    print("[Core Inventory] No inventory created for clothing " .. _FORV_19_)
+                    return
+                end
+                preopenHolder(
+                    source,
+                    _FORV_19_ .. "-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""),
+                    _FORV_19_,
+                    nil,
+                    nil,
+                    true
+                )
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:updateInventory")
+AddEventHandler(
+    "core_inventory:server:updateInventory",
+    function(_ARG_0_, _ARG_1_)
+        ActiveIncentories[_ARG_0_].content = _ARG_1_
+        for _FORV_17_, _FORV_18_ in pairs(ActiveIncentories[_ARG_0_].spectators) do
+            if _FORV_18_ then
+                TriggerClientEvent("core_inventory:client:sync", _FORV_17_, _ARG_0_, ActiveIncentories[_ARG_0_])
+            end
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:useItem")
+AddEventHandler(
+    "core_inventory:server:useItem",
+    function(_ARG_0_, _ARG_1_)
+        if ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[_ARG_1_] then
+            UsedItems["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")] = _ARG_1_
+            copy(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                        _ARG_1_
+                    ]
+                ).info =
+                copy(
+                ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                    _ARG_1_
+                ]
+            ).metadata
+            ESX.UseItem(
+                source,
+                _ARG_0_,
+                (copy(
+                    ActiveIncentories["content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", "")].content[
+                        _ARG_1_
+                    ]
+                ))
+            )
+        elseif #getItems("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_) > 0 then
+            getItems("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)[1].info =
+                getItems("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)[1].metadata
+            ESX.UseItem(
+                source,
+                _ARG_0_,
+                getItems("content-" .. ESX.GetPlayerFromId(source).getIdentifier():gsub(":", ""), _ARG_0_)[1]
+            )
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:openHolder")
+AddEventHandler(
+    "core_inventory:server:openHolder",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+        preopenHolder(source, _ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, true)
+    end
+)
+RegisterServerEvent("core_inventory:server:openInventory")
+AddEventHandler(
+    "core_inventory:server:openInventory",
+    function(_ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_)
+        if "otherplayer" == _ARG_1_ then
+            preopenInventory(
+                source,
+                "content-" .. ESX.GetPlayerFromId(_ARG_0_).getIdentifier():gsub(":", ""),
+                "content",
+                nil,
+                nil,
+                true
+            )
+            preopenInventory(
+                source,
+                "primary-" .. ESX.GetPlayerFromId(_ARG_0_).getIdentifier():gsub(":", ""),
+                "primary",
+                nil,
+                nil,
+                true
+            )
+            preopenInventory(
+                source,
+                "secondry-" .. ESX.GetPlayerFromId(_ARG_0_).getIdentifier():gsub(":", ""),
+                "secondry",
+                nil,
+                nil,
+                true
+            )
+        else
+            preopenInventory(source, _ARG_0_, _ARG_1_, _ARG_2_, _ARG_3_, true)
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:updateAmmo")
+AddEventHandler(
+    "core_inventory:server:updateAmmo",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        if ActiveIncentories[_ARG_1_] and _ARG_2_ and ActiveIncentories[_ARG_1_].content[_ARG_0_] then
+            ActiveIncentories[_ARG_1_].content[_ARG_0_].metadata.ammo = _ARG_2_
+        end
+    end
+)
+RegisterServerEvent("core_inventory:server:removeDurability")
+AddEventHandler(
+    "core_inventory:server:removeDurability",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        removeDurability(_ARG_1_, _ARG_0_, _ARG_2_)
+    end
+)
+RegisterServerEvent("core_inventory:server:openTrunk")
+AddEventHandler(
+    "core_inventory:server:openTrunk",
+    function(_ARG_0_, _ARG_1_, _ARG_2_)
+        if _ARG_2_ and Config.SpecificTrunks[_ARG_2_] then
+        end
+        preopenInventory(
+            source,
+            "trunk-" .. _ARG_0_.gsub(_ARG_0_, " ", "-"),
+            Config.SpecificTrunks[_ARG_2_],
+            nil,
+            nil,
+            true
+        )
+    end
+)
+RegisterServerEvent("core_inventory:server:openGlovebox")
+AddEventHandler(
+    "core_inventory:server:openGlovebox",
+    function(_ARG_0_)
+        preopenInventory(source, "glovebox-" .. _ARG_0_.gsub(_ARG_0_, " ", "-"), "glovebox", nil, nil, true)
+    end
+)
+RegisterServerEvent("core_inventory:server:closeInventory")
+AddEventHandler(
+    "core_inventory:server:closeInventory",
+    function(_ARG_0_, _ARG_1_)
+        ActiveIncentories[_ARG_0_].spectators[source] = nil
+        ActiveIncentories[_ARG_0_].x = _ARG_1_.x
+        ActiveIncentories[_ARG_0_].y = _ARG_1_.y
+        ActiveIncentories[_ARG_0_].hidden = _ARG_1_.hidden
+        if
+            "drop" == ActiveIncentories[_ARG_0_].type and 0 == #ActiveIncentories[_ARG_0_].spectators and
+                nil == next(ActiveIncentories[_ARG_0_].content)
+         then
+            Drops[_ARG_0_] = nil
+            TriggerClientEvent("core_inventory:client:syncDrops", -1, Drops)
+        end
+        if 0 == #ActiveIncentories[_ARG_0_].spectators then
+            saveInventory(_ARG_0_)
+        end
+    end
+)
+
+exports("openHolder", preopenHolder)
+exports("openInventory", preopenInventory)
+exports("addItem", addItem)
+exports("canCarry", canCarry)
+exports("removeItem", removeItem)
+exports("removeItemExact", removeItemExact)
+exports("clearInventory", clearInventory)
+exports("getItem", getItem)
+exports("updateMetadata", updateMetadata)
+exports("openLoot", openLoot)
+exports("getItems", getItems)
+exports("getInventory", getInventory)
+exports("removeDurability", removeDurability)
+exports("setDurability", setDurability)
+
+ESX.RegisterServerCallback("Nexan:Inventory:GetInventory",function(source, callback)
+    callback(Nexan_GetInventory(ESX.GetPlayerFromId(source).identifier))
+end)
+
+function Nexan_GetInventory(inventory)
+    if not Inventories[inventory] then
+        Inventories[inventory] = {}
+    end
+    return Inventories[inventory]
+end
+
+RegisterServerEvent("core_inventory:server:loadInventory")
+AddEventHandler("core_inventory:server:loadInventory", function()
+    local xPlayer = ESX.GetPlayerFromId(source)
+    if xPlayer then
+        MySQL.query.await("SELECT inventorysettings FROM users WHERE identifier = ?", { xPlayer.identifier }, function(result)
+            if result[1] then
+                TriggerClientEvent("core_inventory:client:setSettings", source, result[1], Items)
+            end
+        end)
+    end
+end)
